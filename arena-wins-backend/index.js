@@ -112,6 +112,13 @@ app.get('/api/win-percentage', async (req, res) => {
 });
 
 // Start server
+app.use(express.static(path.join(__dirname, 'build')));
+
+// For any other route, serve React's index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });

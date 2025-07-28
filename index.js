@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 4000;
 // Enable CORS for all origins (for now)
 app.use(cors());
 app.use(express.json());
+app.get('/favicon.ico', (req, res) => res.status(204));
 
 // Sample data (replace with real logic later)
 let matchData = [

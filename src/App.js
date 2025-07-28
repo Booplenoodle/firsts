@@ -2,28 +2,7 @@ import React, { useState, useEffect } from 'react';
 import WinPercentage from './WinPercentage'; // Your existing WinPercentage component
 
 const allChampions = [
-  "Aatrox", "Ahri", "Akali", "Akshan", "Alistar", "Ambessa", "Amumu", "Anivia", "Annie",
-  "Aphelios", "Ashe", "AurelionSol", "Azir", "Bard", "Belveth", "Blitzcrank",
-  "Brand", "Braum", "Briar", "Caitlyn", "Camille", "Cassiopeia", "Chogath", "Corki",
-  "Darius", "Diana", "DrMundo", "Draven", "Ekko", "Elise", "Evelynn", "Ezreal",
-  "Fiddlesticks", "Fiora", "Fizz", "Galio", "Gangplank", "Garen", "Gnar",
-  "Gragas", "Graves", "Gwen", "Hecarim", "Heimerdinger", "Illaoi", "Irelia",
-  "Ivern", "Janna", "JarvanIV", "Jax", "Jayce", "Jhin", "Jinx", "KSante",
-  "Kaisa", "Kalista", "Karma", "Karthus", "Kassadin", "Katarina", "Kayle",
-  "Kayn", "Kennen", "Khazix", "Kindred", "Kled", "KogMaw", "Leblanc", "LeeSin",
-  "Leona", "Lillia", "Lissandra", "Lucian", "Lulu", "Lux", "Malphite",
-  "Malzahar", "Maokai", "MasterYi", "Mel", "Milio", "MissFortune", "Mordekaiser", "Morgana",
-  "Nami", "Nasus", "Nautilus", "Neeko", "Nidalee", "Nilah", "Nocturne", "Nunu",
-  "Olaf", "Orianna", "Ornn", "Pantheon", "Poppy", "Pyke", "Qiyana", "Quinn",
-  "Rakan", "Rammus", "RekSai", "Rell", "Renekton", "Rengar", "Riven", "Rumble",
-  "Ryze", "Samira", "Sejuani", "Senna", "Seraphine", "Sett", "Shaco", "Shen",
-  "Shyvana", "Singed", "Sion", "Sivir", "Skarner", "Smolder", "Sona", "Soraka", "Swain",
-  "Sylas", "Syndra", "TahmKench", "Taliyah", "Talon", "Taric", "Teemo",
-  "Thresh", "Tristana", "Trundle", "Tryndamere", "TwistedFate", "Twitch",
-  "Udyr", "Urgot", "Varus", "Vayne", "Veigar", "Velkoz", "Vex", "Vi", "Viego",
-  "Viktor", "Vladimir", "Volibear", "Warwick", "MonkeyKing", "Xayah", "Xerath",
-  "XinZhao", "Yasuo", "Yone", "Yorick", "Yunara", "Yuumi", "Zac", "Zed", "Zeri", "Ziggs",
-  "Zilean", "Zoe", "Zyra"
+  // ... your champion list unchanged ...
 ];
 
 const ddragonVersion = "15.14.1";
@@ -33,6 +12,28 @@ function App() {
     const saved = localStorage.getItem('arenaWins');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // New state for win percentage data from backend
+  const [backendWinData, setBackendWinData] = useState({ winPercent: '0.00', totalMatches: 0, wins: 0, message: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch win percentage from backend API once on mount
+  useEffect(() => {
+    fetch('https://arena-wins-backend-de7eb58946d6.herokuapp.com/api/win-percentage')
+      .then(res => {
+        if (!res.ok) throw new Error(`API error: ${res.statusText}`);
+        return res.json();
+      })
+      .then(data => {
+        setBackendWinData(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
 
   // Store wins in localStorage on change
   useEffect(() => {
@@ -81,7 +82,18 @@ function App() {
     <div style={styles.container}>
       <h1 style={styles.title}>Arena Wins Tracker</h1>
 
-      {/* Your win percentage component */}
+      {/* Show loading, error, or backend win stats */}
+      {loading ? (
+        <p>Loading win stats from backend...</p>
+      ) : error ? (
+        <p style={{ color: 'red' }}>Error loading backend data: {error}</p>
+      ) : (
+        <div style={{ marginBottom: 20 }}>
+          <strong>Backend Stats:</strong> {backendWinData.message || `${backendWinData.wins} wins out of ${backendWinData.totalMatches} matches (${backendWinData.winPercent}%)`}
+        </div>
+      )}
+
+      {/* Your manual WinPercentage component if needed */}
       <WinPercentage />
 
       <section>
@@ -106,63 +118,7 @@ function App() {
 }
 
 const styles = {
-  container: {
-    maxWidth: 720,
-    margin: 'auto',
-    padding: 20,
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    backgroundColor: '#f9fafb',
-    color: '#1f2937',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-    borderRadius: 12,
-  },
-  title: {
-    textAlign: 'center',
-    marginBottom: 30,
-    fontWeight: '700',
-    fontSize: '2.5rem',
-    color: '#2563eb',
-  },
-  sectionTitle: {
-    borderBottom: '2px solid #e0e7ff',
-    paddingBottom: 6,
-    marginBottom: 20,
-    color: '#4338ca',
-  },
-  message: {
-    textAlign: 'center',
-    fontStyle: 'italic',
-    color: '#6b7280',
-  },
-  championList: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 20,
-    justifyContent: 'center',
-    padding: 0,
-    listStyle: 'none',
-  },
-  championItem: {
-    width: 100,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-    padding: 10,
-    textAlign: 'center',
-    userSelect: 'none',
-  },
-  championImage: {
-    width: 64,
-    height: 64,
-    objectFit: 'contain',
-    borderRadius: 6,
-    marginBottom: 8,
-  },
-  championName: {
-    fontWeight: '600',
-    fontSize: 14,
-    color: '#374151',
-  },
+  // ... your existing styles unchanged ...
 };
 
 export default App;

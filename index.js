@@ -2,12 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
-
-// Riot API config
 const RIOT_API_KEY = process.env.RIOT_API_KEY;
 const PUUID = process.env.PUUID;
 const QUEUE_ID_ARENA = 1700;
@@ -16,31 +15,42 @@ app.use(cors());
 app.use(express.json());
 
 app.get('/favicon.ico', (req, res) => res.status(204));
-app.get('/', (req, res) => res.send('Arena Wins Backend is running!'));
 
-// Win Percentage Route
+// Helper function to fetch match IDs
+async function fetchMatchIds() {
+  const url = `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${PUUID}/ids?count=20&api_key=${RIOT_API_KEY}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch match IDs: ${response.statusText}`);
+  return response.json();
+}
+
+// Helper function to fetch match details
+async function fetchMatchDetails(matchId) {
+  const url = `https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}?api_key=${RIOT_API_KEY}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch match details: ${response.statusText}`);
+  return response.json();
+}
+
 app.get('/api/win-percentage', async (req, res) => {
   try {
-    // 1. Get recent Arena match IDs
-    const matchIdsRes = await fetch(`https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${PUUID}/ids?start=0&count=20&api_key=${RIOT_API_KEY}`);
-    const matchIds = await matchIdsRes.json();
+    const matchIds = await fetchMatchIds();
 
-    // 2. Fetch and filter Arena matches
     const arenaMatches = [];
     for (const matchId of matchIds) {
-      const matchRes = await fetch(`https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}?api_key=${RIOT_API_KEY}`);
-      const matchData = await matchRes.json();
-      if (matchData.info?.queueId === QUEUE_ID_ARENA) {
-        arenaMatches.push(matchData);
+      if (arenaMatches.length >= 5) break; // limit to 5 Arena matches
+
+      const match = await fetchMatchDetails(matchId);
+      if (match.info?.queueId === QUEUE_ID_ARENA) {
+        arenaMatches.push(match);
       }
     }
 
-    // 3. Analyze match data
     let wins = 0;
     for (const match of arenaMatches) {
-      const player = match.info.participants.find(p => p.puuid === PUUID);
-      if (player && player.placement === 1) {
-        wins += 1;
+      const participant = match.info.participants.find(p => p.puuid === PUUID);
+      if (participant && participant.placement === 1) {
+        wins++;
       }
     }
 
@@ -48,18 +58,21 @@ app.get('/api/win-percentage', async (req, res) => {
     const winPercent = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(2) : '0.00';
 
     res.json({
+      message: `Analyzed ${totalMatches} Arena matches.`,
       wins,
       totalMatches,
       winPercent,
-      message: `Analyzed ${totalMatches} Arena matches`,
     });
   } catch (error) {
-    console.error('Error fetching matches:', error);
-    res.status(500).json({ error: 'Failed to fetch match data' });
+    console.error('Error in /api/win-percentage:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch match data' });
   }
 });
 
-// Start server
+app.get('/', (req, res) => {
+  res.send('Arena Wins Backend is running!');
+});
+
 app.listen(PORT, () => {
-  console.log(`✅ Backend is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT}`);
 });

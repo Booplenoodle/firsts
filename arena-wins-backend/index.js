@@ -58,28 +58,31 @@ async function fetchMatchDetailsWithRateLimit(matchIds) {
   return matches;
 }
 
-// Middleware
-app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-app.use(express.static(path.join(__dirname, 'public')));
+// 1. Enable CORS early
 app.use(cors());
 
-// Logging middleware
+// 2. Logging middleware
 app.use((req, res, next) => {
   console.log(`Requested URL: ${req.url}`);
   next();
 });
 
-// Content Security Policy header
+// 3. Content Security Policy - allow your frontend/backend URLs and Riot CDN images
 app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'none'; img-src 'self' http://localhost:4000 data:; connect-src 'self';"
+    "default-src 'self'; img-src 'self' https://ddragon.leagueoflegends.com data:; connect-src 'self' https://arena-wins-backend-de7eb58946d6.herokuapp.com; script-src 'self'; style-src 'self';"
   );
   next();
 });
 
-// Routes
+// Serve favicon if you have it
+app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 
+// 4. Serve React static build files
+app.use(express.static(path.join(__dirname, 'build')));
+
+// 5. API route
 app.get('/api/win-percentage', async (req, res) => {
   try {
     const matchIds = await fetchLast20ArenaMatchIds();
@@ -111,14 +114,12 @@ app.get('/api/win-percentage', async (req, res) => {
   }
 });
 
-// Start server
-app.use(express.static(path.join(__dirname, 'build')));
-
-// For any other route, serve React's index.html
+// 6. For any other route, serve React's index.html (SPA support)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
+// 7. Start server
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
 });

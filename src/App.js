@@ -20,7 +20,7 @@ function App() {
 
   // Fetch win percentage from backend API once on mount
   useEffect(() => {
-    fetch('https://arena-wins-backend-de7eb58946d6.herokuapp.com/api/win-percentage')
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/win-percentage`)
       .then(res => {
         if (!res.ok) throw new Error(`API error: ${res.statusText}`);
         return res.json();

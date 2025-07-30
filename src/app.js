@@ -1,199 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import WinPercentage from './WinPercentage'; // Your existing WinPercentage component
-
-const allChampions = [
-   "Aatrox",
-   "Ahri",
-   "Akali",
-   "Akshan",
-   "Alistar",
-   "Ambessa",
-   "Amumu",
-   "Anivia",
-   "Annie",
-   "Aphelios",
-   "Ashe",
-   "AurelionSol",
-   "Aurora",
-   "Azir",
-   "Bard",
-   "BelVeth",
-   "Blitzcrank",
-   "Brand",
-   "Braum",
-   "Briar",
-   "Caitlyn",
-   "Camille",
-   "Cassiopeia",
-   "ChoGath",
-   "Corki",
-   "Darius",
-   "Diana",
-   "DrMundo",
-   "Draven",
-   "Ekko",
-   "Elise",
-   "Evelynn",
-   "Ezreal",
-   "Fiddlesticks",
-   "Fiora",
-   "Fizz",
-   "Galio",
-   "Gangplank",
-   "Garen",
-   "Gnar",
-   "Gragas",
-   "Graves",
-   "Gwen",
-   "Hecarim",
-   "Heimerdinger",
-   "Hwei",
-   "Illaoi",
-   "Irelia",
-   "Ivern",
-   "Janna",
-   "JarvanIV",
-   "Jax",
-   "Jayce",
-   "Jhin",
-   "Jinx",
-   "KSante",
-   "Kaisa",
-   "Kalista",
-   "Karma",
-   "Karthus",
-   "Kassadin",
-   "Katarina",
-   "Kayle",
-   "Kayn",
-   "Kennen",
-   "Khazix",
-   "Kindred",
-   "Kled",
-   "KogMaw",
-   "LeBlanc",
-   "LeeSin",
-   "Leona", 
-   "Lillia",
-   "Lissandra",
-   "Lucian",
-   "Lulu",
-   "Lux",
-   "Malphite",
-   "Malzahar",
-   "Maokai",
-   "MasterYi",
-   "Mel",
-   "Milio",
-   "MissFortune",
-   "Mordekaiser",
-   "Morgana",
-   "Naafiri",
-   "Nami",
-   "Nasus",
-   "Nautilus",
-   "Neeko",
-   "Nidalee",
-   "Nilah",
-   "Nocturne",
-   "Nunu",
-   "Olaf",
-   "Orianna", 
-   "Ornn",
-   "Pantheon",
-   "Poppy",
-   "Pyke",
-   "Qiyana",
-   "Quinn",
-   "Rakan",
-   "Rammus",
-   "RekSai",
-   "Rell",
-   "RenataGlasc",
-   "Renekton",
-   "Rengar",
-   "Riven",
-   "Rumble",
-   "Ryze",
-   "Samira",
-   "Sejuani",
-   "Senna",
-   "Seraphine",
-   "Sett",
-   "Shaco",
-   "Shen",
-   "Shyvana",
-   "Singed",
-   "Sion",
-   "Sivir",
-   "Skarner",
-   "Smolder",
-   "Sona",
-   "Soraka",
-   "Swain",
-   "Sylas",
-   "Syndra",
-   "TahmKench",
-   "Taliyah",
-   "Talon",
-   "Taric",
-   "Teemo",
-   "Thresh",
-   "Tristana",
-   "Trundle",
-   "Tryndamere",
-   "TwistedFate",
-   "Twitch",
-   "Udyr",
-   "Urgot",
-   "Varus",
-   "Vayne",
-   "Veigar",
-   "VelKoz",
-   "Vex",
-   "Vi",
-   "Viego",
-   "Viktor",
-   "Vladimir",
-   "Volibear",
-   "Warwick",
-   "MonkeyKing",
-   "Xayah",
-   "Xerath",
-   "XinZhao",
-   "Yasuo",
-   "Yone",
-   "Yorick",
-   "Yunara",
-   "Yuumi",
-   "Zac",
-   "Zed",
-   "Zeri",
-   "Ziggs",
-   "Zilean",
-   "Zoe",
-   "Zyra"
-
-
-  // ... your champion list unchanged ...
-];
+import WinPercentage from './WinPercentage';
+import championsData from './champion.json'; // Import the full Riot JSON
 
 const ddragonVersion = "15.14.1";
 
 function App() {
+  // Extract champions from the imported JSON
+  // championsData.data is an object with champion IDs as keys
+  const allChampions = Object.values(championsData.data).map(champ => champ.id);
+
   const [wins, setWins] = useState(() => {
     const saved = localStorage.getItem('arenaWins');
     return saved ? JSON.parse(saved) : [];
   });
 
-  // New state for win percentage data from backend
+  // Backend win stats states
   const [backendWinData, setBackendWinData] = useState({ winPercent: '0.00', totalMatches: 0, wins: 0, message: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch win percentage from backend API once on mount
+  // Fetch backend win percentage once on mount
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_BASE_URL}/api/win-percentage`)
+    fetch('https://arena-wins-backend-de7eb58946d6.herokuapp.com/api/win-percentage')
+
       .then(res => {
         if (!res.ok) throw new Error(`API error: ${res.statusText}`);
         return res.json();
@@ -208,12 +37,12 @@ function App() {
       });
   }, []);
 
-  // Store wins in localStorage on change
+  // Store wins in localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('arenaWins', JSON.stringify(wins));
   }, [wins]);
 
-  // Toggle win status by clicking champion image
+  // Toggle win status for a champion
   const toggleWin = (champ) => {
     if (wins.includes(champ)) {
       setWins(wins.filter(w => w !== champ));
@@ -224,7 +53,7 @@ function App() {
 
   const championsLeft = allChampions.filter(champ => !wins.includes(champ));
 
-  // Render champions as clickable images with color or gray filter
+  // Render list of champions with clickable images
   const renderChampionList = (champions) => (
     <ul style={styles.championList}>
       {champions.map(champ => (
@@ -255,7 +84,6 @@ function App() {
     <div style={styles.container}>
       <h1 style={styles.title}>Arena Wins Tracker</h1>
 
-      {/* Show loading, error, or backend win stats */}
       {loading ? (
         <p>Loading win stats from backend...</p>
       ) : error ? (
@@ -266,7 +94,6 @@ function App() {
         </div>
       )}
 
-      {/* Your manual WinPercentage component if needed */}
       <WinPercentage />
 
       <section>
@@ -291,7 +118,41 @@ function App() {
 }
 
 const styles = {
-  // ... your existing styles unchanged ...
+  container: {
+    padding: '20px',
+    fontFamily: 'Arial, sans-serif',
+  },
+  title: {
+    textAlign: 'center',
+  },
+  sectionTitle: {
+    marginTop: '30px',
+  },
+  championList: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    listStyle: 'none',
+    padding: 0,
+  },
+  championItem: {
+    width: '80px',
+    margin: '10px',
+    textAlign: 'center',
+    userSelect: 'none',
+  },
+  championImage: {
+    width: '64px',
+    height: '64px',
+    borderRadius: '8px',
+    boxShadow: '0 0 5px rgba(0,0,0,0.2)',
+  },
+  championName: {
+    marginTop: '5px',
+    fontSize: '12px',
+  },
+  message: {
+    fontStyle: 'italic',
+  },
 };
 
 export default App;

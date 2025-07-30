@@ -11,7 +11,27 @@ const RIOT_API_KEY = process.env.RIOT_API_KEY;
 const PUUID = process.env.PUUID;
 const QUEUE_ID_ARENA = 1700;
 
-app.use(cors());
+// Allowed origins for CORS
+const allowedOrigins = [
+  'https://booplenoodle.github.io',
+  'http://localhost:5173',  // vite dev server port (adjust if needed)
+  'http://localhost:3000',  // react-scripts dev server port (adjust if needed)
+];
+
+// CORS options
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      // allow requests with no origin like curl or server-to-server requests
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get('/favicon.ico', (req, res) => res.status(204));

@@ -1,0 +1,153 @@
+import express from 'express';
+import cors from 'cors';
+import fetch from 'node-fetch';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 4000;
+let RIOT_API_KEY = process.env.RIOT_API_KEY;
+
+const QUEUE_ID_ARENA = 1700;
+
+// Allowed origins for CORS
+const allowedOrigins = [
+  'https://booplenoodle.github.io',
+  'http://localhost:5173', // Vite dev
+  'http://localhost:3000'  // CRA dev
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`Blocked CORS origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+
+// Simple in-memory cache: { key: { data, timestamp } }
+const cache = {};
+const CACHE_DURATION = 23 * 60 * 60 * 1000; // 23 hours in ms
+
+const isCacheValid = (timestamp) => (Date.now() - timestamp) < CACHE_DURATION;
+
+const getCacheKey = (summoner, region) => `${summoner.toLowerCase()}_${region.toLowerCase()}`;
+
+// Riot API endpoints
+const getSummonerByNameUrl = (region, summonerName) =>
+  `https://${region}.api.riotgames.com/lol/summoner/v4/summoners/by-name/${encodeURIComponent(summonerName)}`;
+
+const getMatchIdsUrl = (puuid, count = 20) =>
+  `https://americas.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=${QUEUE_ID_ARENA}&count=${count}`;
+
+const getMatchDetailsUrl = (matchId) =>
+  `https://americas.api.riotgames.com/lol/match/v5/matches/${matchId}`;
+
+// Endpoint to get win percentage for summoner + region
+app.get('/api/win-percentage', async (req, res) => {
+  const { summoner, region } = req.query;
+
+  if (!RIOT_API_KEY) {
+    return res.status(500).json({ error: 'Missing Riot API Key in environment variables.' });
+  }
+
+  if (!summoner || !region) {
+    return res.status(400).json({ error: 'Missing summoner or region parameter' });
+  }
+
+  const cacheKey = getCacheKey(summoner, region);
+
+  if (cache[cacheKey] && isCacheValid(cache[cacheKey].timestamp)) {
+    console.log(`Serving cached data for ${cacheKey}`);
+    return res.json(cache[cacheKey].data);
+  }
+
+  try {
+    // 1. Fetch summoner data to get puuid
+    const summonerRes = await fetch(getSummonerByNameUrl(region, summoner), {
+      headers: { 'X-Riot-Token': RIOT_API_KEY }
+    });
+
+    if (!summonerRes.ok) {
+      return res.status(summonerRes.status).json({ error: `Error fetching summoner: ${summonerRes.statusText}` });
+    }
+
+    const summonerData = await summonerRes.json();
+
+    // 2. Fetch match IDs for Arena queue
+    const matchIdsRes = await fetch(getMatchIdsUrl(summonerData.puuid, 20), {
+      headers: { 'X-Riot-Token': RIOT_API_KEY }
+    });
+
+    if (!matchIdsRes.ok) {
+      return res.status(matchIdsRes.status).json({ error: `Error fetching match IDs: ${matchIdsRes.statusText}` });
+    }
+
+    const matchIds = await matchIdsRes.json();
+
+    // 3. Fetch match details and filter Arena matches
+    // To reduce number of requests, fetch up to 5 Arena matches only
+    const arenaMatches = [];
+    for (const matchId of matchIds) {
+      if (arenaMatches.length >= 100) break;
+      const matchRes = await fetch(getMatchDetailsUrl(matchId), {
+        headers: { 'X-Riot-Token': RIOT_API_KEY }
+      });
+
+      if (!matchRes.ok) {
+        console.warn(`Failed to fetch match details for ${matchId}: ${matchRes.statusText}`);
+        continue;
+      }
+
+      const matchData = await matchRes.json();
+      if (matchData.info.queueId === QUEUE_ID_ARENA) {
+        arenaMatches.push(matchData);
+      }
+    }
+
+    // 4. Calculate wins and win percentage
+    let wins = 0;
+    const totalMatches = arenaMatches.length;
+
+    arenaMatches.forEach(match => {
+      const player = match.info.participants.find(p => p.puuid === summonerData.puuid);
+      if (player?.placement === 1) wins++;
+    });
+
+    const winPercent = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(2) : '0.00';
+
+    const responsePayload = {
+      summonerName: summonerData.name,
+      region,
+      wins,
+      totalMatches,
+      winPercent,
+      message: `Analyzed ${totalMatches} Arena matches for ${summonerData.name}`
+    };
+
+    // Cache the response
+    cache[cacheKey] = { data: responsePayload, timestamp: Date.now() };
+
+    res.json(responsePayload);
+  } catch (error) {
+    console.error('Error in /api/win-percentage:', error);
+    res.status(500).json({ error: error.message || 'Failed to fetch match data' });
+  }
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.send('Arena Wins Backend is running!');
+});
+
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});

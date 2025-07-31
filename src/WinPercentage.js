@@ -10,7 +10,7 @@ function WinPercentage() {
     async function fetchWinPercent() {
       setLoading(true);
       try {
-        const res = await fetch('http://localhost:4000/api/win-percentage'); // Change URL if deployed
+        const res = await fetch('https://arena-wins-backend-de7eb58946d6.herokuapp.com/api/win-percentage'); // Change URL if deployed
         if (!res.ok) throw new Error('Failed to fetch win percentage');
         const data = await res.json();
         setWinPercent(data.winPercent);

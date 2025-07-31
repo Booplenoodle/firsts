@@ -197,7 +197,7 @@ function App() {
         </div>
       )}
 
-      <WinPercentage />
+      <WinPercentage summoner={currentSummoner} region={currentRegion} />
 
       <section>
         <h2 style={styles.sectionTitle}>Champions Won 1st Place With (click to toggle):</h2>
